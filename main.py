@@ -9,34 +9,13 @@ from transformers import Trainer, TrainingArguments, GPT2Tokenizer, GPT2LMHeadMo
 from datasets import load_dataset
 import torch
 from concurrent.futures import ThreadPoolExecutor
+import numpy as np
 
 base_url = 'https://arxiv.org/html/'
 
 num_papers_to_try = 1000
 
-log_file = 'crawled_urls.txt'
-
 max_links_to_crawl = 100
-
-index = 0
-
-def load_proxies():
-    with open("proxies.txt", "r") as f:
-        proxies = [line.strip() for line in f.readlines()]
-    return proxies
-
-def generate_random_paper_id():
-    global index
-    year = 23  # Fixing year to 2023
-    month = random.randint(1, 12)
-    paper_number = str(index).rjust(5, "0")
-    index += 1
-    return f"{year:02d}{month:02d}.{paper_number}"
-
-def log_url(url):
-    print(url)
-    with open(log_file, 'a') as f:
-        f.write(url + '\n')
 
 async def fetch(session, url, proxy=None):
     headers = {
@@ -50,67 +29,29 @@ async def fetch(session, url, proxy=None):
         print(f"Error fetching {url}: {e}")
         return ""
 
-async def get_html_content(session, url, proxy=None):
-    html = await fetch(session, url, proxy)
-    if html:
-        soup = BeautifulSoup(html, 'lxml')
-        content = soup.find_all(['p', 'h1', 'h2', 'h3', 'pre', 'code'])
-        links = soup.find_all(['a'])
-        text = ' '.join(el.get_text() for el in content)
-        if re.search(r'\b(html|head|body|div|span|a|img|table|script|style)\b', text, re.I):
-            return text.strip(), [a['href'] for a in soup.find_all('a', href=True)]
-    return "", []
-
-async def try_versions(session, paper_id, proxy=None):
-    version = 1
-    while version <= 5:
-        versioned_id = f"{paper_id}v{version}"
-        url = f"{base_url}{versioned_id}"
-        print(f"Trying URL: {url}")
-        text, _ = await get_html_content(session, url, proxy)
-        if text:
-            print(f"Found valid version {versioned_id}!")
-            return text
-        version += 1
-    return ""
-
-async def crawl_and_collect_single(paper_id, proxy=None):
-    async with aiohttp.ClientSession() as session:
-        print(f"Attempting to fetch paper with ID: {paper_id}")
-        text = await try_versions(session, paper_id, proxy)
-        if text:
-            log_url(f"https://arxiv.org/html/{paper_id}")
-            return text
-    return ""
-
-async def crawl_and_collect(proxies):
-    collected_texts = []
-    with ThreadPoolExecutor() as executor:
-        loop = asyncio.get_event_loop()
-        tasks = []
-        for _ in range(num_papers_to_try):
-            paper_id = generate_random_paper_id()
-            proxy = random.choice(proxies)
-            tasks.append(loop.create_task(crawl_and_collect_single(paper_id, proxy)))
-        results = await asyncio.gather(*tasks)
-        collected_texts = [result for result in results if result]
-    return collected_texts
+async def findpaper(session, year, month, index):
+    for version in range(1,8):
+        url = f"https://arxiv.org/html/{year}{str(month).rjust(2, "0")}.{str(index).rjust(5, "0")}v{version}"
+        html = await fetch(session, url)
+        if html != "":
+            print("hit",url)
+            save_to_jsonl(html)
+            return 1
+    return 0
 
 async def main():
-    proxies = load_proxies()
-
     filename = 'html_fine_tune_data.jsonl'
     
     with open(filename, 'w') as f:
         f.write("") 
-    
-    texts = await crawl_and_collect(proxies)
-    if texts:
-        print(f"Collected {len(texts)} texts.")
-        save_to_jsonl(texts)
-    else:
-        print("No valid papers found.")
-    
+
+    async with aiohttp.ClientSession() as session:
+        list = []
+        for year in range(24,18,-1)
+        x = np.sum(await asyncio.gather(*list))
+
+    print(f"found {x} papers")
+
     train_gpt_model('html_fine_tune_data.jsonl')
 
 def save_to_jsonl(texts, filename='html_fine_tune_data.jsonl'):
