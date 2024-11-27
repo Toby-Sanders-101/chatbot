@@ -6,9 +6,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 base_url = 'https://arxiv.org/html/'
-num_papers_to_try = 1000
+num_papers_to_try = 10000
 log_file = 'crawled_urls.txt'
-max_links_to_crawl = 100
+max_links_to_crawl = 1000
 RETRY_WAIT_TIME = 10
 MAX_RETRIES = 5
 
