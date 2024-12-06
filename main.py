@@ -63,4 +63,5 @@ def train_gpt_model(data_file):
 if __name__ == "__main__":
     # Path to your JSONL file with training data
     data_file = 'html_fine_tune_data.jsonl'  # Update this if necessary
-    train_gpt_model(data_file)
+    while True:
+        train_gpt_model(data_file)
